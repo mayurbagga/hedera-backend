@@ -6,7 +6,6 @@ import { ERROR_MESSAGES } from '../utils/constants.js';
 import mongoose from 'mongoose';
 import { Chat } from '../models/chatModel.js';
 import User from '../models/userModel.js';
-import { Conversation } from '../models/conversationModel.js';
 
 export const threadService = {
   async createThread(assistantId) {
@@ -204,10 +203,10 @@ export const threadService = {
   },
 
   async getConversation(threadId) {
-    const conversation = await Conversation.findOne({ threadId });
-    if (!conversation) {
-      throw new Error('Conversation not found');
+    const chat = await Chat.findOne({ threadId });
+    if (!chat) {
+      throw new Error('Chat not found');
     }
-    return conversation.messages;
+    return chat.messages;
   }
 };

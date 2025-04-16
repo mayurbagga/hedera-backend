@@ -3,9 +3,9 @@ import { openai } from '../config/openai.js';
 import { functionDefinitions } from './functions/index.js';
 import { ERROR_MESSAGES } from '../utils/constants.js';
 import { Thread } from '../models/Thread.js';
-import { createConversation, addMessageToConversation, getConversationHistory } from './conversation.js';
 import { mongoose } from 'mongoose';
 import { openaiClient } from '../clients/openaiClient.js';
+import { Chat } from '../models/chatModel.js';
 
 export const assistantService = {
   async create(data) {
@@ -74,7 +74,15 @@ export const assistantService = {
       console.log('Created thread in database:', thread._id);
       console.log('Thread OpenAI ID:', thread.openaiThreadId);
 
-      await createConversation(thread._id);
+      // Create initial chat document
+      const chat = new Chat({
+        assistantId: assistant._id,
+        threadId: thread._id,
+        userId: data.userAddress,
+        messages: [],
+        status: 'active'
+      });
+      await chat.save();
 
       return { assistant, thread };
     } catch (error) {

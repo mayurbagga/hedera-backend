@@ -7,11 +7,11 @@ import threadRoutes from './routes/threadRoutes.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import { setupSwagger } from './config/swagger.js';
 import userRoutes from './routes/userRoutes.js';
-import conversationRoutes from './routes/conversationRoutes.js';
 import Web3 from 'web3';
 import { Assistant } from './models/Assistant.js';
 import mongoose from 'mongoose';
 import factoryABI from '../abi_Fectory_Bonding_Curve.json' assert { type: 'json' };
+import chatRoutes from './routes/chatRoutes.js';
 dotenv.config();
 
 const app = express();
@@ -57,7 +57,7 @@ app.use(express.json());
 app.use('/api/assistants', assistantRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/threads', threadRoutes);
-app.use('/api/conversations', conversationRoutes);
+app.use('/api/chats', chatRoutes);
 
 // Test route to verify server is working
 app.get('/test', (req, res) => {
