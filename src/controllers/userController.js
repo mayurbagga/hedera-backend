@@ -7,17 +7,32 @@ import jwt from 'jsonwebtoken';
 // Store nonces in memory for simplicity (consider using a database or Redis in production)
 const nonces = new Map();
 
-// Register a new user with address only, ensuring uniqueness
+// Register a new user with two addresses and private key
 export const registerUser = async (req, res) => {
   try {
-    const { address } = req.body;
-    const existingUser = await User.findOne({ address });
-    if (existingUser) {
-      return res.status(400).json({ message: 'User already exists' });
+    const { address1, address2, privateKey } = req.body;
+    
+    // Validate that all required fields are provided
+    if (!address1 || !address2 || !privateKey) {
+      return res.status(400).json({ message: 'Both addresses and private key are required' });
     }
-    const user = new User({ address });
+
+    // Check if either address already exists
+    const existingUser1 = await User.findOne({ address1 });
+    const existingUser2 = await User.findOne({ address2 });
+    
+    if (existingUser1 || existingUser2) {
+      return res.status(400).json({ message: 'One or both addresses are already registered' });
+    }
+
+    const user = new User({ address1, address2, privateKey });
     await user.save();
-    res.status(201).json({ message: 'User registered successfully', user });
+    
+    // Return user without private key
+    const userResponse = user.toObject();
+    delete userResponse.privateKey;
+    
+    res.status(201).json({ message: 'User registered successfully', user: userResponse });
   } catch (error) {
     res.status(500).json({ message: 'Error registering user', error });
   }
@@ -34,20 +49,28 @@ export const getUserAssistants = async (req, res) => {
   }
 };
 
-// Add a new endpoint for MetaMask authentication
+// Update authenticateUser to check both addresses
 export const authenticateUser = async (req, res) => {
   try {
     const { address } = req.body;
 
-    // Log the received address
-    console.log('Received Address:', address);
+    // Check if the address matches either address1 or address2
+    const user = await User.findOne({
+      $or: [
+        { address1: address },
+        { address2: address }
+      ]
+    });
 
-    // Bypass signature verification and issue a static token
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
     const token = generateToken(address);
     res.json({ token });
 
   } catch (error) {
-    console.error('Authentication Error:', error); // Log the error details
+    console.error('Authentication Error:', error);
     res.status(500).json({ message: 'Error during authentication', error: error.message });
   }
 };
@@ -74,4 +97,34 @@ export const getNonce = (req, res) => {
   const { address } = req.body;
   const nonce = generateNonceForAddress(address);
   res.json({ nonce });
+};
+
+// Get user details including private key
+export const getUserDetails = async (req, res) => {
+  try {
+    const { address } = req.params;
+    
+    // Find user by either address1 or address2
+    const user = await User.findOne({
+      $or: [
+        { address1: address },
+        { address2: address }
+      ]
+    }).select('+privateKey'); // Explicitly include private key
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.status(200).json({ 
+      success: true, 
+      data: {
+        address1: user.address1,
+        address2: user.address2,
+        privateKey: user.privateKey
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Error fetching user details', error });
+  }
 }; 
