@@ -87,6 +87,36 @@ const assistantSchema = new mongoose.Schema({
   tokenSymbol: {
     type: String,
     trim: true
+  },
+  // New Hedera integration fields
+  hederaIntegration: {
+    enabled: {
+      type: Boolean,
+      default: false
+    },
+    network: {
+      type: String,
+      enum: ['mainnet', 'testnet', 'previewnet'],
+      default: 'testnet'
+    },
+    allowedOperations: [{
+      type: String,
+      enum: ['transfer', 'createToken', 'getBalance']
+    }],
+    rateLimits: {
+      transfers: {
+        type: Number,
+        default: 100
+      },
+      creates: {
+        type: Number,
+        default: 10
+      },
+      messages: {
+        type: Number,
+        default: 1000
+      }
+    }
   }
 }, {
   timestamps: true

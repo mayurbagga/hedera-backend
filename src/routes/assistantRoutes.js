@@ -1,7 +1,9 @@
 import express from 'express';
 import { assistantController } from '../controllers/assistantController.js';
+import { HederaChatService } from '../services/HederaChatService.js';
 
 const router = express.Router();
+const hederaChatService = new HederaChatService();
 
 /**
  * @swagger
@@ -92,5 +94,38 @@ router.delete('/:id', assistantController.delete);
 router.get('/:assistantId/threadId', assistantController.getThreadIdByAssistantId);
 
 router.get('/address/:userAddress', assistantController.getByUserAddress);
+
+// Handle Hedera operations through prompts
+router.post('/:assistantId/prompt', async (req, res) => {
+    try {
+        const { prompt } = req.body;
+        const userId = req.user.id;
+
+        // Check if it's a Hedera-related query
+        const hederaKeywords = ['balance', 'hbar', 'token', 'wallet', 'transfer', 'hedera'];
+        const isHederaQuery = hederaKeywords.some(keyword => prompt.toLowerCase().includes(keyword));
+
+        if (isHederaQuery) {
+            console.log('Routing Hedera query to HederaChatService:', prompt);
+            const response = await hederaChatService.handleChatMessage(userId, prompt);
+            return res.json({
+                message: response,
+                operation: 'hedera_chat',
+                data: response,
+                error: false
+            });
+        }
+
+        // For non-Hedera queries, use the regular assistant handler
+        const result = await assistantController.handleChatMessage(req, res);
+        return result;
+    } catch (error) {
+        console.error('Error in prompt handler:', error);
+        res.status(400).json({ 
+            error: true,
+            message: error.message 
+        });
+    }
+});
 
 export default router;

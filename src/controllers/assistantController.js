@@ -156,25 +156,50 @@ export const assistantController = {
         return res.status(404).json({ success: false, message: `No thread found with id '${threadId}'` });
       }
 
-      const { llmProvider, llmModel } = assistant;
-
-      let responseMessage;
-      switch (llmProvider) {
-        case 'openai':
-          responseMessage = await openaiClient.sendMessage(llmModel, message);
-          break;
-        default:
-          throw new Error('Unsupported LLM provider');
-      }
-
       // Save chat to the database
-      const chat = new Chat({ threadId, userId, message, response: responseMessage });
+      const chat = new Chat({ threadId, userId, message });
       await chat.save();
 
-      res.status(200).json({ success: true, message: 'Chat processed successfully', response: responseMessage });
+      // Get response from OpenAI
+      const completion = await client.chat.completions.create({
+        model: "gpt-3.5-turbo",
+        messages: [
+          {
+            role: "system",
+            content: "You are a helpful assistant. For any Hedera-related queries (balance, tokens, transfers, etc.), respond with: 'This query requires Hedera blockchain access. Please use the HederaChatService.'"
+          },
+          { role: "user", content: message }
+        ]
+      });
+
+      const responseMessage = completion.choices[0].message.content;
+
+      // Save AI response
+      await Chat.findByIdAndUpdate(
+        chat._id,
+        {
+          $push: {
+            messages: {
+              role: 'assistant',
+              content: responseMessage,
+              timestamp: new Date()
+            }
+          }
+        }
+      );
+
+      res.status(200).json({ 
+        success: true, 
+        message: 'Chat processed successfully', 
+        response: responseMessage 
+      });
     } catch (error) {
       console.error('Error processing chat message:', error);
-      res.status(500).json({ success: false, message: 'Failed to fetch a response from AI', response: 'Hi there! How can I assist you today?' });
+      res.status(500).json({ 
+        success: false, 
+        message: 'Failed to process chat message', 
+        error: error.message 
+      });
     }
   })
 };

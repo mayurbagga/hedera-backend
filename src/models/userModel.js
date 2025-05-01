@@ -1,21 +1,49 @@
 import mongoose from 'mongoose';
 
 const userSchema = new mongoose.Schema({
-  address1: {
+  address: {
     type: String,
-    required: true,
+    required: [true, 'Address is required'],
     unique: true,
+    trim: true
   },
-  address2: {
+  accountId: {
     type: String,
-    required: true,
+    required: [true, 'Account ID is required'],
     unique: true,
+    trim: true
+  },
+  publicKey: {
+    type: String,
+    required: [true, 'Public key is required'],
+    unique: true,
+    trim: true
   },
   privateKey: {
     type: String,
-    required: true,
+    required: [true, 'Private key is required'],
     select: false, // This ensures the private key is not returned in queries by default
+    trim: true
+  },
+  network: {
+    type: String,
+    enum: ['mainnet', 'testnet', 'previewnet'],
+    default: 'testnet'
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now
   }
+});
+
+// Update the updatedAt timestamp before saving
+userSchema.pre('save', function(next) {
+  this.updatedAt = Date.now();
+  next();
 });
 
 const User = mongoose.model('User', userSchema);

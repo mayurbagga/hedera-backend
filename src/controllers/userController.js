@@ -1,40 +1,68 @@
 import User from '../models/userModel.js';
 import Assistant from '../models/assistantModel.js';
-import { ethers } from 'ethers';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 
 // Store nonces in memory for simplicity (consider using a database or Redis in production)
 const nonces = new Map();
 
-// Register a new user with two addresses and private key
+// Register a new user with Hedera credentials
 export const registerUser = async (req, res) => {
   try {
-    const { address1, address2, privateKey } = req.body;
+    const { address, accountId, publicKey, privateKey, network } = req.body;
     
     // Validate that all required fields are provided
-    if (!address1 || !address2 || !privateKey) {
-      return res.status(400).json({ message: 'Both addresses and private key are required' });
+    if (!address || !accountId || !publicKey || !privateKey) {
+      return res.status(400).json({ message: 'Address, Account ID, Public Key, and Private Key are required' });
     }
 
-    // Check if either address already exists
-    const existingUser1 = await User.findOne({ address1 });
-    const existingUser2 = await User.findOne({ address2 });
+    // Check for existing user with each unique field
+    const existingAddress = await User.findOne({ address });
+    const existingAccountId = await User.findOne({ accountId });
+    const existingPublicKey = await User.findOne({ publicKey });
     
-    if (existingUser1 || existingUser2) {
-      return res.status(400).json({ message: 'One or both addresses are already registered' });
+    if (existingAddress || existingAccountId || existingPublicKey) {
+      let message = 'User already exists with: ';
+      const conflicts = [];
+      
+      if (existingAddress) conflicts.push('address');
+      if (existingAccountId) conflicts.push('account ID');
+      if (existingPublicKey) conflicts.push('public key');
+      
+      message += conflicts.join(', ');
+      return res.status(400).json({ 
+        message,
+        conflicts: {
+          address: !!existingAddress,
+          accountId: !!existingAccountId,
+          publicKey: !!existingPublicKey
+        }
+      });
     }
 
-    const user = new User({ address1, address2, privateKey });
+    const user = new User({ 
+      address, 
+      accountId, 
+      publicKey, 
+      privateKey,
+      network: network || 'testnet'
+    });
     await user.save();
     
     // Return user without private key
     const userResponse = user.toObject();
     delete userResponse.privateKey;
     
-    res.status(201).json({ message: 'User registered successfully', user: userResponse });
+    res.status(201).json({ 
+      message: 'User registered successfully', 
+      user: userResponse 
+    });
   } catch (error) {
-    res.status(500).json({ message: 'Error registering user', error });
+    console.error('Registration Error:', error);
+    res.status(500).json({ 
+      message: 'Error registering user', 
+      error: error.message 
+    });
   }
 };
 
@@ -49,24 +77,18 @@ export const getUserAssistants = async (req, res) => {
   }
 };
 
-// Update authenticateUser to check both addresses
+// Update authenticateUser to check address
 export const authenticateUser = async (req, res) => {
   try {
     const { address } = req.body;
 
-    // Check if the address matches either address1 or address2
-    const user = await User.findOne({
-      $or: [
-        { address1: address },
-        { address2: address }
-      ]
-    });
+    const user = await User.findOne({ address });
 
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    const token = generateToken(address);
+    const token = generateToken(address, user._id);
     res.json({ token });
 
   } catch (error) {
@@ -83,9 +105,10 @@ export const generateNonceForAddress = (address) => {
 };
 
 // Helper function to generate a token
-export function generateToken(address) {
+export function generateToken(address, userId) {
   const payload = { 
     address,
+    userId,
     iat: Math.floor(Date.now() / 1000) // Issued at time
   };
   const secretKey = process.env.JWT_SECRET;
@@ -104,13 +127,7 @@ export const getUserDetails = async (req, res) => {
   try {
     const { address } = req.params;
     
-    // Find user by either address1 or address2
-    const user = await User.findOne({
-      $or: [
-        { address1: address },
-        { address2: address }
-      ]
-    }).select('+privateKey'); // Explicitly include private key
+    const user = await User.findOne({ address }).select('+privateKey'); // Explicitly include private key
 
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
@@ -119,12 +136,14 @@ export const getUserDetails = async (req, res) => {
     res.status(200).json({ 
       success: true, 
       data: {
-        address1: user.address1,
-        address2: user.address2,
-        privateKey: user.privateKey
+        address: user.address,
+        accountId: user.accountId,
+        publicKey: user.publicKey,
+        privateKey: user.privateKey,
+        network: user.network
       }
     });
   } catch (error) {
-    res.status(500).json({ message: 'Error fetching user details', error });
+    res.status(500).json({ message: 'Error fetching user details', error: error.message });
   }
 }; 

@@ -12,6 +12,7 @@
     "@aptos-labs/wallet-adapter-ant-design": "^4.0.3",
     "@aptos-labs/wallet-adapter-core": "^5.1.0",
     "@aptos-labs/wallet-adapter-react": "^4.1.0",
+    "@hashgraph/sdk": "^2.56.0",
     "@langchain/anthropic": "^0.3.14",
     "@langchain/core": "^0.3.41",
     "@langchain/langgraph": "^0.2.49",
@@ -28,6 +29,8 @@
     "ethers": "^6.13.5",
     "express": "^4.18.2",
     "express-async-handler": "^1.2.0",
+    "hedera-agent-kit": "^1.0.6",
+    "ioredis": "^5.3.2",
     "jsonwebtoken": "^8.5.1",
     "mongoose": "^8.0.3",
     "move-agent-kit-fullstack": "^0.2.7",
@@ -36,6 +39,7 @@
     "swagger-ui-express": "^5.0.1",
     "viem": "^2.21.55",
     "web3": "^4.16.0",
+    "winston": "^3.11.0",
     "ws": "^8.18.0"
   },
   "devDependencies": {
