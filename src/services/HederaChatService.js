@@ -5,6 +5,7 @@ import { HumanMessage, SystemMessage } from '@langchain/core/messages';
 import User from '../models/userModel.js';
 import { Assistant } from '../models/Assistant.js';
 import { Chat } from '../models/chatModel.js';
+import mongoose from 'mongoose';
 
 export class HederaChatService {
     constructor() {
@@ -178,16 +179,20 @@ export class HederaChatService {
                 await this.initializeHederaAgent(userAddress);
             }
 
-            // Find or create chat document
+            // Find existing chat or create new one with a new threadId
             let chat = await Chat.findOne({
                 assistantId: assistantId,
-                userId: userAddress
+                userId: userAddress,
+                status: 'active'
             });
 
             if (!chat) {
+                // Create a new threadId
+                const threadId = new mongoose.Types.ObjectId();
                 chat = new Chat({
                     assistantId: assistantId,
                     userId: userAddress,
+                    threadId: threadId,
                     messages: [],
                     status: 'active'
                 });
@@ -285,7 +290,7 @@ export class HederaChatService {
                         operationResult = "I'm not sure how to handle that request. Please try again.";
                 }
 
-                // Add operation result as a separate message
+                // Add operation result as a separate message if different from initial response
                 if (operationResult && operationResult !== parsedResponse.response) {
                     chat.messages.push({
                         role: 'assistant',
