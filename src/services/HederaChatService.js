@@ -266,11 +266,9 @@ export class HederaChatService {
                         operationResult = `Your HBAR balance is: ${balance} HBAR`;
                         break;
                     case 'TRANSFER':
-                        const transferResult = await this.hederaAgent.transferToken(
-                            null, // HBAR transfer
+                        const transferResult = await this.hederaAgent.transferHbar(
                             parsedResponse.params.recipientId,
-                            parsedResponse.params.amount,
-                            true
+                            parsedResponse.params.amount
                         );
                         operationResult = `Transfer successful! Transaction hash: ${transferResult.txHash}`;
                         break;
